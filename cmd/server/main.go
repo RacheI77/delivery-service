@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"log"
 	"net/http"
 	"time"
 
@@ -10,17 +9,20 @@ import (
 
 	"delivery-service/internal/config"
 	"delivery-service/internal/handler"
+	"delivery-service/internal/logger"
 	"delivery-service/internal/model"
 	"delivery-service/internal/repository"
 	"delivery-service/internal/service"
 )
 
 func main() {
+	logger.Info("Starting delivery service")
+
 	cfg := config.Load()
 
 	db, err := sql.Open("mysql", cfg.DSN())
 	if err != nil {
-		log.Fatalf("failed to open database connection: %v", err)
+		logger.Fatal("failed to open database connection: %v", err)
 	}
 	defer db.Close()
 
@@ -29,8 +31,9 @@ func main() {
 	db.SetConnMaxLifetime(5 * time.Minute)
 
 	if err := waitForDB(db); err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
+		logger.Fatal("failed to connect to database: %v", err)
 	}
+	logger.Info("database connection established")
 
 	orderRepo := repository.NewOrderRepository(db)
 	distanceService := &service.GoogleDistanceService{
@@ -59,9 +62,9 @@ func main() {
 
 	addr := ":" + cfg.Port
 
-	log.Printf("Delivery service listening on %s", addr)
+	logger.Info("Delivery service listening on %s", addr)
 	if err := http.ListenAndServe(addr, mux); err != nil {
-		log.Fatalf("server failed: %v", err)
+		logger.Fatal("server failed: %v", err)
 	}
 }
 
@@ -69,9 +72,10 @@ func waitForDB(db *sql.DB) error {
 	var err error
 	for i := 0; i < 30; i++ {
 		if err = db.Ping(); err == nil {
+			logger.Info("database ping successful (attempt %d/30)", i+1)
 			return nil
 		}
-		log.Printf("waiting for database to be ready (%d/30): %v", i+1, err)
+		logger.Error("waiting for database to be ready (%d/30): %v", i+1, err)
 		time.Sleep(2 * time.Second)
 	}
 	return err
