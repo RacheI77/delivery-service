@@ -123,11 +123,6 @@ func (h *OrderHandler) ListOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	const maxLimit = 100
-	if limit > maxLimit {
-		limit = maxLimit
-	}
-
 	orders, err := h.Repo.List(page, limit)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "DB_ERROR")
