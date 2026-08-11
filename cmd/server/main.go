@@ -2,14 +2,13 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 
+	"delivery-service/internal/config"
 	"delivery-service/internal/handler"
 	"delivery-service/internal/model"
 	"delivery-service/internal/repository"
@@ -17,16 +16,9 @@ import (
 )
 
 func main() {
-	dbHost := getEnv("DB_HOST", "localhost")
-	dbPort := getEnv("DB_PORT", "3306")
-	dbUser := getEnv("DB_USER", "root")
-	dbPassword := getEnv("DB_PASSWORD", "root")
-	dbName := getEnv("DB_NAME", "delivery_db")
+	cfg := config.Load()
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&charset=utf8mb4",
-		dbUser, dbPassword, dbHost, dbPort, dbName)
-
-	db, err := sql.Open("mysql", dsn)
+	db, err := sql.Open("mysql", cfg.DSN())
 	if err != nil {
 		log.Fatalf("failed to open database connection: %v", err)
 	}
@@ -41,7 +33,9 @@ func main() {
 	}
 
 	orderRepo := repository.NewOrderRepository(db)
-	distanceService := &service.GoogleDistanceService{}
+	distanceService := &service.GoogleDistanceService{
+		APIKey: cfg.GoogleMapsAPIKey,
+	}
 	orderHandler := &handler.OrderHandler{
 		Repo:            orderRepo,
 		DistanceService: distanceService,
@@ -63,20 +57,12 @@ func main() {
 		handler.WriteJSON(w, http.StatusNotFound, model.ErrorResponse{Error: "NOT_FOUND"})
 	})
 
-	port := getEnv("PORT", "8080")
-	addr := ":" + port
+	addr := ":" + cfg.Port
 
 	log.Printf("Delivery service listening on %s", addr)
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatalf("server failed: %v", err)
 	}
-}
-
-func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
 }
 
 func waitForDB(db *sql.DB) error {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 )
 
 type DistanceCalculator interface {
@@ -13,6 +12,7 @@ type DistanceCalculator interface {
 }
 
 type GoogleDistanceService struct {
+	APIKey  string
 	BaseURL string
 }
 
@@ -28,25 +28,18 @@ type distanceMatrixResponse struct {
 	Status string `json:"status"`
 }
 
-const defaultBaseURL = "https://maps.googleapis.com/maps/api/distancematrix/json"
-
 func (g *GoogleDistanceService) GetDistance(origin, destination []string) (int, error) {
-	apiKey := os.Getenv("GOOGLE_MAPS_API_KEY")
+	apiKey := g.APIKey
 	if apiKey == "" {
-		return 0, fmt.Errorf("GOOGLE_MAPS_API_KEY environment variable is missing")
+		return 0, fmt.Errorf("GOOGLE_MAPS_API_KEY is missing")
 	}
 
 	origStr := fmt.Sprintf("%s,%s", origin[0], origin[1])
 	destStr := fmt.Sprintf("%s,%s", destination[0], destination[1])
 
-	baseURL := g.BaseURL
-	if baseURL == "" {
-		baseURL = defaultBaseURL
-	}
-
 	endpoint := fmt.Sprintf(
 		"%s?origins=%s&destinations=%s&key=%s",
-		baseURL, url.QueryEscape(origStr), url.QueryEscape(destStr), apiKey,
+		g.BaseURL, url.QueryEscape(origStr), url.QueryEscape(destStr), apiKey,
 	)
 
 	resp, err := http.Get(endpoint)
