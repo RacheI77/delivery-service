@@ -1,0 +1,21 @@
+# Sensitive configuration
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+*.exe
+*.out
+
+# Go
+*.test
+*.prof
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
